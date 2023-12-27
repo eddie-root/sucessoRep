@@ -3,6 +3,7 @@ package com.eddmeDev.sucessorep.services;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import com.eddmeDev.sucessorep.dto.CategoryDTO;
 import com.eddmeDev.sucessorep.entities.Category;
 import com.eddmeDev.sucessorep.repositories.CategoryRepository;
+import com.eddmeDev.sucessorep.services.exceptions.ResourceNotFoundException;
+
+import jakarta.persistence.EntityNotFoundException;
 
 
 @Service
@@ -28,7 +32,7 @@ public class CategoryService {
 	@Transactional(readOnly = true)
 	public CategoryDTO findById(Long id) {
 		Optional<Category> obj = repository.findById(id);
-		Category entity = obj.orElseThrow();
+		Category entity = obj.orElseThrow(() -> new ResourceNotFoundException("Entity not found"));
 		return new CategoryDTO(entity);
 	}
 	
@@ -42,14 +46,23 @@ public class CategoryService {
 	
 	@Transactional
 	public CategoryDTO update(Long id, CategoryDTO dto) {
-		Category entity = repository.getReferenceById(id);
-		entity.setName(dto.getName());
-		entity = repository.save(entity);
-		return new CategoryDTO(entity);
+		try {
+			Category entity = repository.getReferenceById(id);
+			entity.setName(dto.getName());
+			entity = repository.save(entity);
+			return new CategoryDTO(entity);			
+		}catch(EntityNotFoundException e) {
+			throw new ResourceNotFoundException("Id not found " + id);
+		}
 	}
 	
 	@Transactional
 	public void delete(Long id) {
-		repository.deleteById(id);
+		try {
+			repository.deleteById(id);			
+		}catch (EmptyResultDataAccessException e) {
+			throw new ResourceNotFoundException("Id not found " + id);
+		}
 	}
+		
 }
